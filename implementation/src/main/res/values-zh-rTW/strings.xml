@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<resources>
+    <string name="detailed_14_days">詳細14天資料</string>
+    <string name="carbs_short">碳水</string>
+    <string name="need_location_permission">應用程式需要位置權限來掃描藍牙和識別 WiFi</string>
+    <string name="executing_right_now">指令正在執行中</string>
+    <string name="below">低於範圍</string>
+    <string name="veryLow">非常低</string>
+    <string name="permission">權限</string>
+    <string name="bg_label">血糖</string>
+    <string name="veryHigh">非常高</string>
+    <string name="need_whitelisting">%1$s 需要電池優化白名單以達到最佳效能</string>
+    <string name="day_tir">白天 TIR</string>
+    <string name="high">高</string>
+    <string name="need_storage_permission">應用程式需要存儲權限以便儲存日誌檔案和匯出設定</string>
+    <string name="low">低</string>
+    <string name="basal_value_below_minimum">基礎值低於最低值。未設置檔案！</string>
+    <string name="std_deviation">標準差: %1$s</string>
+    <string name="above">高於範圍</string>
+    <string name="night_tir">夜間 TIR</string>
+    <string name="in_range">在範圍內</string>
+    <string name="hba1c">糖化血色素:</string>
+</resources>
