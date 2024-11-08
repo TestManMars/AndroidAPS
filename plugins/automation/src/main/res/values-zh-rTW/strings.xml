@@ -133,4 +133,8 @@
     <string name="location">位置</string>
     <string name="use_passive_location">使用被動位置</string>
     <string name="percent_u">百分比 [%]：</string>
+    <string name="exportsettings_message">設定匯出: %1$s</string>
+    <string name="export_settings_short">治療中的文字:</string>
+    <string name="triggerPodChangeLabel">幫浦註冊</string>
+    <string name="triggerPodChangeDesc">幫浦已註冊</string>
 </resources>

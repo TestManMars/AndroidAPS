@@ -521,4 +521,19 @@
     <string name="limitingbolus">因 %2$s 限制注射為 %1$.1f U</string>
     <string name="wizard_no_active_profile">未設置活動設定檔！</string>
     <string name="iob">IOB 活性胰島素</string>
+    <string name="export_warning">警告</string>
+    <string name="export_expired">過期</string>
+    <string name="careportal_settings_export">設定匯出</string>
+    <string name="export_result_message_about_to_expire">設定已匯出: 密碼即將過期。請手動匯出並（重新）輸入密碼。</string>
+    <string name="export_result_message_exported">設定已匯出</string>
+    <string name="export_disabled">停用</string>
+    <string name="export_alert">警報</string>
+    <string name="export_failed">失敗</string>
+    <string name="careportal_settings_export_message">設定匯出: %1$s</string>
+    <string name="export_result_message_failed">設定匯出失敗!</string>
+    <string name="export_result_message_disabled">警告（自動化）: 設定匯出未啟用!</string>
+    <string name="export_ok">確定</string>
+    <string name="export_result_message_expired">設定匯出已取消: 密碼已過期。請手動匯出並（重新）輸入!</string>
+    <string name="settingsexport">設定匯出</string>
+    <string name="exportsettings">匯出設定</string>
 </resources>

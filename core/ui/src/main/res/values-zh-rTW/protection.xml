@@ -29,4 +29,5 @@
     <string name="custom_pin">自訂 PIN 碼</string>
     <string name="unsecure_fallback_descriotion_biometric">為了生效，生物識別保護需要設定一個主密碼作為後備。\n\n請設定主密碼！</string>
     <string name="settings_password">設定密碼</string>
+    <string name="datastore_password_cleared">儲存的匯出密碼已清除!</string>
 </resources>

@@ -159,4 +159,7 @@
     <string name="maintenance">維護</string>
     <string name="import_setting">匯入設定</string>
     <string name="prefdecrypt_settings_secure">設定文件安全</string>
+    <string name="exported_failed">偏好設定匯出失敗!</string>
+    <string name="unattended_settings_export_summary">啟用此功能將安全儲存您的密碼於手機上</string>
+    <string name="unattended_settings_export">未監控的設定匯出</string>
 </resources>

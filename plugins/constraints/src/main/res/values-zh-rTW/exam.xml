@@ -80,7 +80,7 @@
     <string name="offlineprofile_label">主題：離線設定檔</string>
     <string name="profileswitchtime_100">進行設定檔切換到高於100%。</string>
     <string name="pumpdisconnect_missinginsulin">它防止AAPS計算幫浦物理中斷連線期間未輸送的胰島素。</string>
-    <string name="breadgrams_calc">如果血糖水平超出可接受範圍（過低或過高），注射計算機可以用來提供碳水化合物或胰島素的修正建議。</string>
+    <string name="breadgrams_calc">如果血糖數值超出可接受範圍（過低或過高），注射計算機可以用來提供碳水化合物或胰島素的修正建議。</string>
     <string name="cob3_question">改變設定檔百分比如何影響COB計算？</string>
     <string name="profileswitch4_sufficient">編輯設定檔以更改值即可實施所做的更改。</string>
     <string name="troubleshooting_hint4">https://github.com/nightscout/AndroidAPS/issues</string>
@@ -161,7 +161,7 @@
     <string name="nsclient_dexcomfollow">其他應用（例如Dexcom follow、xDrip運行在追蹤模式下）允許您遠端跟踪某些參數（例如血糖/傳感器值），但使用不同的算法，因此可能會有不準確的IOB或COB值。</string>
     <string name="sensitivity_edit">敏感性外掛為用戶提供對基礎速率、I:C比率和ISF的建議變更，可用於編輯設定檔。</string>
     <string name="dia_valuemustbedetermined">您應該自行確定適合的DIA值。</string>
-    <string name="wronginsulin_donothing">什麼也不做，允許AAPS修正任何導致的高血糖數值。</string>
+    <string name="wronginsulin_donothing">不採取任何行動，讓 AAPS 來調整，因而產生的高血糖數值</string>
     <string name="insulin_ultrarapid">Ultra-Rapid Oref外掛應使用哪種胰島素？</string>
     <string name="basaltest_beforeloop">開始循環之前。</string>
     <string name="basaltest_fixed">設置並驗證後，這些值應該不會隨時間變化。</string>
@@ -196,7 +196,7 @@
     <string name="objectives_afterchange">更改任何設定後匯出您的設定。</string>
     <string name="wrongcarbs_bolus">在首頁總覽中使用胰島素（注射）按鈕進行注射。</string>
     <string name="breadgrams_label">碳水化合物輸入和注射</string>
-    <string name="prerequisites_smartwatch">一個智慧手錶。</string>
+    <string name="prerequisites_smartwatch">一隻智慧型手錶。</string>
     <string name="basalhelp_diabetesteam">您的糖尿病團隊</string>
     <string name="prerequisites_label">前置條件</string>
     <string name="hypott_preventoversmb">防止AAPS因治療低血糖所用的快速碳水化合物引起的血糖上升而過度修正。</string>
