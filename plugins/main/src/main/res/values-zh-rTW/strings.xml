@@ -80,7 +80,7 @@
     <string name="data_status">血糖資料狀態</string>
     <string name="insulin_label">胰島素</string>
     <string name="smscommunicator_code_verify_label">要檢查的代碼：</string>
-    <string name="isf_dynamic_label">您的設定已啟用動態計算 ISF，以下數值僅在資料遺失時作為備用。</string>
+    <string name="isf_dynamic_label">你的設定已啟用動態計算 ISF\n以下數值僅在資料遺失時作為備用。</string>
     <string name="keep_screen_on_title">保持螢幕開啟</string>
     <string name="smscommunicator_otp_verification_wrong_pin">錯誤的PIN碼</string>
     <string name="smscommunicator_code_verify_hint">OTP + PIN</string>
@@ -224,7 +224,7 @@
     <string name="prediction_shortname">預測</string>
     <string name="filter">篩選</string>
     <string name="a11y_graph">圖表</string>
-    <string name="ic_dynamic_label">您的設定已啟用動態計算 IC，以下數值僅在資料遺失時作為備用。</string>
+    <string name="ic_dynamic_label">你的設定已啟用動態計算 IC\n以下數值僅在資料遺失時作為備用。</string>
     <string name="smscommunicator_wrong_duration">錯誤的持續時間</string>
     <string name="largedisplay_description">大顯示</string>
     <string name="statuslights_res_critical">儲液罐容量臨界門檻值 [U]</string>
