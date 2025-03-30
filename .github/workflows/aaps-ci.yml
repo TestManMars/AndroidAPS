@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       buildVariant:
-        description: 'Select Build Variant'
+        description: 'Select Build Variant2'
         required: true
         default: 'FullRelease'
         type: choice
