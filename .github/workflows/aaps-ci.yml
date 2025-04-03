@@ -78,10 +78,10 @@ jobs:
           fi
 
       - uses: actions/checkout@v4
-      - name: Set up JDK 21
+      - name: Set up JDK ${{ inputs.java-version }}
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: ${{ inputs.java-version }}
           distribution: 'temurin'
           cache: gradle
 
