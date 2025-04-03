@@ -3,6 +3,13 @@ name: AAPS CI
 on:
   workflow_dispatch:
     inputs:
+      java-version:
+        description: 'Specify JDK version'
+        required: true
+        default: '21'
+        option:
+          - 21
+          - 17
       buildVariant:
         description: 'Select Build Variant'
         required: true
@@ -70,10 +77,10 @@ jobs:
           fi
 
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ inputs.java-version }}
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: ${{ inputs.java-version }}
           distribution: 'temurin'
           cache: gradle
 
