@@ -7,7 +7,7 @@ on:
         description: 'Specify JDK version'
         required: true
         default: '21'
-        option:
+        options:
           - 21
           - 17
       buildVariant:
