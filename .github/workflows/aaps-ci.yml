@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - '21'
+          - '19'
           - '17'
       buildVariant:
         description: 'Select Build Variant'
