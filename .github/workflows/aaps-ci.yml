@@ -85,14 +85,10 @@ jobs:
           java-version: ${{ inputs.java-version }}
           distribution: 'temurin'
           cache: gradle
-      - name: Clean workspace
-        run: |
-          git reset --hard
-          git clean -fdx
       - name: Decode keystore
         run: |
-          mkdir -p keystore
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $(pwd)/keystore/keystore.jks
+          mkdir -p "$RUNNER_TEMP/keystore"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/keystore/keystore.jks"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -124,7 +120,7 @@ jobs:
       - name: Build APKs
         run: |
           ./gradlew assemble${{ env.BUILD_VARIANT }} \
-          -Pandroid.injected.signing.store.file=$(pwd)/keystore/keystore.jks \
+          -Pandroid.injected.signing.store.file="$RUNNER_TEMP/keystore/keystore.jks" \
           -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
           -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
           -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
