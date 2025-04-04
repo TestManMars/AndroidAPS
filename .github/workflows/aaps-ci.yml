@@ -68,6 +68,40 @@ jobs:
             echo "🛑 One or more required secrets are missing. Failing the build."
             exit 1
           fi
+
+      - name: Extract VERSION_NAME for App and Wear
+        id: extract_versions
+        run: |
+          BRANCH_NAME="${GITHUB_REF_NAME:-$(basename $GITHUB_REF)}"
+          if echo "$BRANCH_NAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+            APP_VERSION="$BRANCH_NAME"
+            WEAR_VERSION="$BRANCH_NAME"
+            if [[ "${VARIANT_FLAVOR}" != "release" ]]; then
+              APP_VERSION="${APP_VERSION}-${VARIANT_FLAVOR}"
+              WEAR_VERSION="${WEAR_VERSION}-${VARIANT_FLAVOR}"
+            fi
+            echo "🔢 Using branch version as version: $BRANCH_NAME"
+            else
+              APP_VERSION=$(find app/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
+              WEAR_VERSION=$(find wear/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
+          fi
+
+          APP_VERSION_DIR=$(echo "$APP_VERSION" | grep -oE '[0-9]+(\.[0-9]+)+')
+          WEAR_VERSION_DIR=$(echo "$WEAR_VERSION" | grep -oE '[0-9]+(\.[0-9]+)+')
+
+          APP_VERSION="$APP_VERSION${VERSION_SUFFIX}"
+          WEAR_VERSION="$WEAR_VERSION${VERSION_SUFFIX}"
+
+          echo "app_version_dir=$APP_VERSION_DIR" >> $GITHUB_OUTPUT
+          echo "wear_version_dir=$WEAR_VERSION_DIR" >> $GITHUB_OUTPUT
+          echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
+
+          echo "APP_VERSION_DIR: $APP_VERSION_DIR"
+          echo "WEAR_VERSION_DIR: $WEAR_VERSION_DIR"
+          echo "APP_VERSION: $APP_VERSION"
+          echo "WEAR_VERSION: $WEAR_VERSION"
+
       - name: Map JDK version by app version
         id: map_jdk
         run: |
@@ -133,39 +167,6 @@ jobs:
           -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
           -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
           -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-
-      - name: Extract VERSION_NAME for App and Wear
-        id: extract_versions
-        run: |
-          BRANCH_NAME="${GITHUB_REF_NAME:-$(basename $GITHUB_REF)}"
-          if echo "$BRANCH_NAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
-            APP_VERSION="$BRANCH_NAME"
-            WEAR_VERSION="$BRANCH_NAME"
-            if [[ "${VARIANT_FLAVOR}" != "release" ]]; then
-              APP_VERSION="${APP_VERSION}-${VARIANT_FLAVOR}"
-              WEAR_VERSION="${WEAR_VERSION}-${VARIANT_FLAVOR}"
-            fi
-            echo "🔢 Using branch version as version: $BRANCH_NAME"
-            else
-              APP_VERSION=$(find app/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
-              WEAR_VERSION=$(find wear/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
-          fi
-
-          APP_VERSION_DIR=$(echo "$APP_VERSION" | grep -oE '[0-9]+(\.[0-9]+)+')
-          WEAR_VERSION_DIR=$(echo "$WEAR_VERSION" | grep -oE '[0-9]+(\.[0-9]+)+')
-
-          APP_VERSION="$APP_VERSION${VERSION_SUFFIX}"
-          WEAR_VERSION="$WEAR_VERSION${VERSION_SUFFIX}"
-          
-          echo "app_version_dir=$APP_VERSION_DIR" >> $GITHUB_OUTPUT
-          echo "wear_version_dir=$WEAR_VERSION_DIR" >> $GITHUB_OUTPUT
-          echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
-          echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
-
-          echo "APP_VERSION_DIR: $APP_VERSION_DIR"
-          echo "WEAR_VERSION_DIR: $WEAR_VERSION_DIR"
-          echo "APP_VERSION: $APP_VERSION"
-          echo "WEAR_VERSION: $WEAR_VERSION"
 
       - name: Rename APKs with version
         run: |
