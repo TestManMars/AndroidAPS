@@ -103,3 +103,12 @@ jobs:
         id: extract_versions
         run: |
           BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
+          if echo "$BRANCH_NAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+            VERSION="$BRANCH_NAME"
+            if [[ "${VARIANT_FLAVOR}" != "release" ]]; then
+              VERSION="${APP_VERSION}-${VARIANT_FLAVOR}"
+            fi
+            echo "🔢 Using branch version as version: $BRANCH_NAME"
+          else
+            VERSION=$(grep 'val appVersion' buildSrc/src/main/kotlin/Versions.kt | awk -F '"' '{print $2}')
+          fi 
