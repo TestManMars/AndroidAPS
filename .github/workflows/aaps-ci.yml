@@ -69,6 +69,9 @@ jobs:
             exit 1
           fi
 
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
       - name: Extract VERSION_NAME for App and Wear
         id: extract_versions
         run: |
@@ -118,7 +121,7 @@ jobs:
 
           echo "📦 App Version: $VERSION → JDK Version: $JDK_VERSION"
           echo "jdk_version=$JDK_VERSION" >> $GITHUB_OUTPUT
-      - uses: actions/checkout@v4
+
       - name: Set up JDK ${{ steps.map_jdk.outputs.jdk_version }}
         uses: actions/setup-java@v4
         with:
