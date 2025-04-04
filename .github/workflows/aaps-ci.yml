@@ -99,3 +99,37 @@ jobs:
           echo "VERSION_SUFFIX=$VERSION_SUFFIX" >> $GITHUB_ENV
           echo "VERSION_SUFFIX: $VERSION_SUFFIX"
 
+      - name: Extract VERSION_NAME for App and Wear
+        id: extract_versions
+        run: |
+          BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
+          if echo "$BRANCH_NAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+            VERSION="$BRANCH_NAME"
+#            if [[ "${VARIANT_FLAVOR}" != "release" ]]; then
+#              VERSION="${APP_VERSION}-${VARIANT_FLAVOR}"
+#            fi
+#            echo "🔢 Using branch version as version: $BRANCH_NAME"
+          else
+            VERSION=$(grep 'val appVersion' buildSrc/src/main/kotlin/Versions.kt | awk -F '"' '{print $2}')
+          fi 
+
+#          VERSION_DIR=$(echo "$VERSION" | grep -oE '[0-9]+(\.[0-9]+)+')
+
+#          VERSION="$VERSION${VERSION_SUFFIX}"
+#          APP_VERSION="$APP_VERSION${VERSION_SUFFIX}"
+#          WEAR_VERSION="$WEAR_VERSION${VERSION_SUFFIX}"
+               
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+#          echo "app_version_dir=$APP_VERSION_DIR" >> $GITHUB_OUTPUT
+#          echo "wear_version_dir=$WEAR_VERSION_DIR" >> $GITHUB_OUTPUT
+#          echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
+#          echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
+
+          echo "VERSION: $VERSION"
+
+#          echo "APP_VERSION_DIR: $APP_VERSION_DIR"
+#          echo "WEAR_VERSION_DIR: $WEAR_VERSION_DIR"
+#          echo "APP_VERSION: $APP_VERSION"
+#          echo "WEAR_VERSION: $WEAR_VERSION"
+
