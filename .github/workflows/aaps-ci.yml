@@ -82,8 +82,8 @@ jobs:
             fi
             echo "🔢 Using branch version as version: $BRANCH_NAME"
           else
-              APP_VERSION=$(find app/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
-              WEAR_VERSION=$(find wear/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
+              APP_VERSION=$(find app -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
+              WEAR_VERSION=$(find wear -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
           fi
 
           APP_VERSION_DIR=$(echo "$APP_VERSION" | grep -oE '[0-9]+(\.[0-9]+)+')
