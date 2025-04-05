@@ -111,6 +111,8 @@ jobs:
       - name: Map JDK version by app version
         run: |
           case "$VERSION" in
+            2.6.2) JDK_VERSION="11" ;;
+            2.8.2.1) JDK_VERSION="13" ;;
             3.2.0.4) JDK_VERSION="19" ;;
             3.3.0.0|3.3.1.3|3.3.2.0) JDK_VERSION="21" ;;
             *)
