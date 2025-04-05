@@ -20,10 +20,11 @@ on:
       uploadTarget:
         description: 'Select Upload Target'
         required: true
-        default: 'dropbox'
+        default: 'artifacts'
         type: choice
         options:
           - dropbox
+          - artifacts
 
 jobs:
   build:
@@ -159,6 +160,32 @@ jobs:
       - name: Upload APKs to Target
         run: |
           set -e
+              if [[ ${{ github.event.inputs.uploadTarget }} == "artifacts" ]]; then
+                echo "📦 Uploading APKs as GitHub Artifacts..."
+          
+                app_path="aaps-$VERSION$VERSION_SUFFIX.apk"
+                wear_path="aaps-wear-$VERSION$VERSION_SUFFIX.apk"
+                artifact_name="aaps-$VERSION$VERSION_SUFFIX"
+                zip_name="$artifact_name.zip"
+                zip_password=${{ secrets.KEY_PASSWORD }}
+      
+                echo "Uploading $app_path and $wear_path as $artifact_name"
+          
+                echo "Preparing APKs..."
+                mkdir -p artifacts
+                cp "$app_path" artifacts/
+                cp "$wear_path" artifacts/
+          
+                echo "🔐 Creating encrypted ZIP..."
+                cd artifacts
+                zip -P "$zip_password" "$zip_name" *.apk
+                cd ..
+          
+                echo "::group::Running upload-artifact via CLI"
+                gh extension install actions/gh-actions-cache
+                gh actions-cache upload "$artifact_name" artifacts/$zip_name
+                echo "::endgroup::"
+          fi
           if [[ "${{ github.event.inputs.uploadTarget }}" == "dropbox" ]]; then
             RESPONSE=$(curl -s -X POST https://api.dropbox.com/oauth2/token \
               -u "${{ secrets.DROPBOX_APP_KEY }}:${{ secrets.DROPBOX_APP_SECRET }}" \
