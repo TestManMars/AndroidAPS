@@ -90,6 +90,9 @@ jobs:
           if [[ "$VARIANT_TYPE" == "debug" ]]; then
             VERSION_SUFFIX="$VERSION_SUFFIX-debug"
           fi
+          if [[ -n "$VERSION_SUFFIX" && "$VERSION_SUFFIX" != -* ]]; then
+            VERSION_SUFFIX="-$VERSION_SUFFIX"
+          fi
           echo "VERSION_SUFFIX=$VERSION_SUFFIX" >> $GITHUB_ENV
           echo "VERSION_SUFFIX: $VERSION_SUFFIX"
 
