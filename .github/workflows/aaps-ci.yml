@@ -23,6 +23,7 @@ on:
         default: 'artifacts'
         type: choice
         options:
+          - google-drive
           - dropbox
           - artifacts
 
@@ -228,3 +229,37 @@ jobs:
           name: aaps-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}
           path: artifacts/*.zip
           retention-days: 1
+
+      - name: Upload APKs to Google Drive
+        if: ${{ github.event.inputs.uploadTarget == 'google-drive' }}
+        env:
+          CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+          VERSION: ${{ env.VERSION }}
+          VERSION_SUFFIX: ${{ env.VERSION_SUFFIX }}
+        run: |
+          set -e
+          echo "🔐 Retrieving Google Drive access token..."
+          TOKEN_RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
+            -d client_id="$CLIENT_ID" \
+            -d client_secret="$CLIENT_SECRET" \
+            -d refresh_token="$REFRESH_TOKEN" \
+            -d grant_type=refresh_token)
+          ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r .access_token)
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          upload_to_gdrive() {
+            FILE=$1
+            NAME=$2
+            echo "⬆️ Uploading $FILE to Google Drive as $NAME..."
+            RESPONSE=$(curl -s -X POST https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -F "metadata={name :'$NAME'};type=application/json;charset=UTF-8" \
+              -F "file=@$FILE;type=application/vnd.android.package-archive")
+            echo "$RESPONSE"
+            echo "✅ Upload complete."
+          }
+
+          upload_to_gdrive "aaps-${VERSION}${VERSION_SUFFIX}.apk" "aaps-${VERSION}${VERSION_SUFFIX}.apk"
+          upload_to_gdrive "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk" "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk"
