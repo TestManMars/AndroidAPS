@@ -58,22 +58,23 @@ jobs:
           
           echo "✅ All required secrets are present."
 
-          keytool -list \
-            -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" > /dev/null || {
-              echo "❌ Keystore cannot be read with provided KEYSTORE_PASSWORD!"
-              exit 1
-            }
-
-          keytool -keypasswd \
+          echo "🔐 Validating alias and key password..."
+  
+          KEYTOOL_LOG=$(mktemp)
+          
+          if ! keytool -list \
             -alias "${{ secrets.KEY_ALIAS }}" \
             -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
             -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-            -keypass "${{ secrets.KEY_PASSWORD }}" \
-            -new "${{ secrets.KEY_PASSWORD }}" > /dev/null || {
-              echo "❌ KEY_ALIAS not found or KEY_PASSWORD incorrect!"
-              exit 1
-            }
+            -keypass "${{ secrets.KEY_PASSWORD }}" > /dev/null 2> "$KEYTOOL_LOG"; then
+            echo "❌ jks or KEY_ALIAS or KEY_PASSWORD or KEYSTORE_PASSWORD incorrect!"
+            echo "🔍 keytool error output:"
+            cat "$KEYTOOL_LOG"
+            rm -f "$KEYTOOL_LOG"
+            exit 1
+          fi
+          
+          rm -f "$KEYTOOL_LOG"
 
           echo "✅ Keystore, alias, and key password are all valid."
 
