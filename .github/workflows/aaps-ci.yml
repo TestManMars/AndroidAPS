@@ -58,16 +58,18 @@ jobs:
           
           echo "✅ All required secrets are present."
 
-          echo "🔐 Validating alias and key password..."
+      - name: Validating keystore, alias and password
+        run: |
+          echo "🔐 Validating keystore, alias and password"
   
           KEYTOOL_LOG=$(mktemp)
           
           if ! keytool -list \
-            -alias "${{ secrets.KEY_ALIAS }}" \
-            -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-            -keypass "${{ secrets.KEY_PASSWORD }}" > /dev/null 2> "$KEYTOOL_LOG"; then
-            echo "❌ jks or KEY_ALIAS or KEY_PASSWORD or KEYSTORE_PASSWORD incorrect!"
+              -alias "${{ secrets.KEY_ALIAS }}" \
+              -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
+              -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+              -keypass "${{ secrets.KEY_PASSWORD }}" > /dev/null 2> "$KEYTOOL_LOG"; then
+            echo "❌ KEYSTORE_BASE64 or KEY_ALIAS or KEY_PASSWORD or KEYSTORE_PASSWORD incorrect!"
             echo "🔍 keytool error output:"
             cat "$KEYTOOL_LOG"
             rm -f "$KEYTOOL_LOG"
@@ -77,6 +79,7 @@ jobs:
           rm -f "$KEYTOOL_LOG"
 
           echo "✅ Keystore, alias, and key password are all valid."
+
       - name: Retrieving Google Drive access token
         env:
           CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
@@ -98,7 +101,7 @@ jobs:
             exit 1
           fi
           
-          echo "GDRIVE_ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
           
           echo "✅ Google OAuth2 access token retrieved and stored."
 
