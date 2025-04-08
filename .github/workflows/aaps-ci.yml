@@ -169,13 +169,23 @@ jobs:
             FILE=$1
             NAME=$2
             echo "⬆️ Uploading $FILE to Google Drive as $NAME..."
-            RESPONSE=$(curl -s -X POST https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart \
-              -H "Authorization: Bearer $ACCESS_TOKEN" \
-              -F "metadata={name :'$NAME'};type=application/json;charset=UTF-8" \
-              -F "file=@$FILE;type=application/vnd.android.package-archive")
-            echo "$RESPONSE"
-            echo "✅ Upload complete."
+            RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/gdrive_response.json -X POST \
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -F "metadata={name :'$NAME'};type=application/json;charset=UTF-8" \
+            -F "file=@$FILE;type=application/vnd.android.package-archive")
+          
+            HTTP_CODE="${RESPONSE: -3}"
+          
+            if [[ "$HTTP_CODE" != "200" && "$HTTP_CODE" != "201" ]]; then
+              echo "❌ Upload failed with HTTP status: $HTTP_CODE"
+              echo "🔍 Full response:"
+              cat /tmp/gdrive_response.json
+              exit 1
+            fi
+          
+            echo "✅ Upload successful: $NAME"
           }
 
-          upload_to_gdrive "AAPS/${VERSION}/aaps-${VERSION}${VERSION_SUFFIX}.apk" "aaps-${VERSION}${VERSION_SUFFIX}.apk"
-          upload_to_gdrive "AAPS/${VERSION}/aaps-wear-${VERSION}${VERSION_SUFFIX}.apk" "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk"
+          upload_to_gdrive "aaps-${VERSION}${VERSION_SUFFIX}.apk" "AAPS/${VERSION}/aaps-${VERSION}${VERSION_SUFFIX}.apk"
+          upload_to_gdrive "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk" "AAPS/${VERSION}/aaps-wear-${VERSION}${VERSION_SUFFIX}.apk"
