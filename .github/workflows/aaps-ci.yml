@@ -241,15 +241,17 @@ jobs:
               echo "❌ File not found: $FILE"
               exit 26
             fi
-          
+            
+            echo "Check File Exists"
             FILE_ID=$(curl -s \
               -H "Authorization: Bearer $ACCESS_TOKEN" \
               "https://www.googleapis.com/drive/v3/files?q=name='${NAME}' and '${VERSION_FOLDER_ID}' in parents and trashed=false&fields=files(id)" | jq -r '.files[0].id')
-          
+            
             if [[ "$FILE_ID" != "null" ]]; then
-            curl -s -X DELETE \
-              -H "Authorization: Bearer $ACCESS_TOKEN" \
-                "https://www.googleapis.com/drive/v3/files/${FILE_ID}"
+              echo "Delete File $FILE_ID"
+              curl -s -X DELETE \
+                -H "Authorization: Bearer $ACCESS_TOKEN" \
+                  "https://www.googleapis.com/drive/v3/files/${FILE_ID}"
             fi
 
             echo "⬆️ Uploading $FILE to Google Drive as $NAME..."
