@@ -17,15 +17,6 @@ on:
           - aapsclient2Debug
           - pumpcontrolRelease
           - pumpcontrolDebug
-      uploadTarget:
-        description: 'Select Upload Target'
-        required: true
-        default: 'artifacts'
-        type: choice
-        options:
-          - google-drive
-          - dropbox
-          - artifacts
 
 jobs:
   build:
@@ -113,8 +104,6 @@ jobs:
       - name: Map JDK version by app version
         run: |
           case "$VERSION" in
-            2.6.2) JDK_VERSION="11" ;;
-            2.8.2.1) JDK_VERSION="11" ;;
             3.1.0.3) JDK_VERSION="17" ;;
             3.2.0.4) JDK_VERSION="19" ;;
             3.3.*) JDK_VERSION="21" ;;
@@ -158,80 +147,7 @@ jobs:
           mv wear/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk \
             aaps-wear-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk
 
-      - name: Upload APKs to Dropbox
-        if: ${{ github.event.inputs.uploadTarget }} == "dropbox"
-        run: |
-          RESPONSE=$(curl -s -X POST https://api.dropbox.com/oauth2/token \
-            -u "${{ secrets.DROPBOX_APP_KEY }}:${{ secrets.DROPBOX_APP_SECRET }}" \
-            -d grant_type=refresh_token \
-            -d refresh_token=${{ secrets.DROPBOX_REFRESH_TOKEN }})
-
-          ACCESS_TOKEN=$(echo "$RESPONSE" | jq -r .access_token)
-          echo "::add-mask::$ACCESS_TOKEN"
-          echo "access_token=$ACCESS_TOKEN" >> $GITHUB_ENV
-        
-          upload_to_dropbox() {
-            FILE_PATH=$1
-            DROPBOX_DEST=$2
-            if [ ! -f "$FILE_PATH" ]; then
-              echo "❌ File not found: $FILE_PATH"
-              exit 1
-            fi
-            echo "⬆️ Uploading $FILE_PATH to Dropbox as $DROPBOX_DEST..."
-            RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/response.json \
-              -X POST https://content.dropboxapi.com/2/files/upload \
-              --header "Authorization: Bearer $ACCESS_TOKEN" \
-              --header "Dropbox-API-Arg: {\"path\": \"/$DROPBOX_DEST\",\"mode\": \"overwrite\",\"autorename\": false,\"mute\": false}" \
-              --header "Content-Type: application/octet-stream" \
-              --data-binary @"$FILE_PATH")
-            HTTP_CODE="${RESPONSE: -3}"
-            if [[ "$HTTP_CODE" != "200" ]]; then
-              echo "❌ Upload failed with HTTP status: $HTTP_CODE"
-              cat /tmp/response.json
-              exit 1
-            fi
-            echo "✅ Upload successful: $DROPBOX_DEST"
-          }
-          upload_to_dropbox "aaps-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk" "${{ env.VERSION }}/aaps-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk"
-          upload_to_dropbox "aaps-wear-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk" "${{ env.VERSION }}/aaps-wear-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk"
-
-      - name: Prepare encrypted ZIP for artifact upload
-        if: ${{ github.event.inputs.uploadTarget == 'artifacts' }}
-        env:
-          VERSION: ${{ env.VERSION }}
-          VERSION_SUFFIX: ${{ env.VERSION_SUFFIX }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          set -e
-          echo "📦 Preparing encrypted APK ZIP for artifact..."
-
-          app_path="aaps-$VERSION$VERSION_SUFFIX.apk"
-          wear_path="aaps-wear-$VERSION$VERSION_SUFFIX.apk"
-          artifact_name="aaps-$VERSION$VERSION_SUFFIX"
-          zip_name="$artifact_name.zip"
-          zip_password="$KEY_PASSWORD"
-
-          echo "Uploading $app_path and $wear_path as $artifact_name"
-
-          mkdir -p artifacts
-          cp "$app_path" artifacts/
-          cp "$wear_path" artifacts/
-
-          echo "🔐 Creating encrypted ZIP..."
-          cd artifacts
-          zip -P "$zip_password" "$zip_name" *.apk
-          cd ..
-
-      - name: Upload encrypted APK zip as GitHub Artifact
-        if: ${{ github.event.inputs.uploadTarget == 'artifacts' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: aaps-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}
-          path: artifacts/*.zip
-          retention-days: 1
-
       - name: Upload APKs to Google Drive
-        if: ${{ github.event.inputs.uploadTarget == 'google-drive' }}
         env:
           CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
@@ -261,5 +177,5 @@ jobs:
             echo "✅ Upload complete."
           }
 
-          upload_to_gdrive "aaps-${VERSION}${VERSION_SUFFIX}.apk" "aaps-${VERSION}${VERSION_SUFFIX}.apk"
-          upload_to_gdrive "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk" "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk"
+          upload_to_gdrive "AAPS/${VERSION}/aaps-${VERSION}${VERSION_SUFFIX}.apk" "aaps-${VERSION}${VERSION_SUFFIX}.apk"
+          upload_to_gdrive "AAPS/${VERSION}/aaps-wear-${VERSION}${VERSION_SUFFIX}.apk" "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk"
