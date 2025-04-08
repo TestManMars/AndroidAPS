@@ -77,6 +77,26 @@ jobs:
           rm -f "$KEYTOOL_LOG"
 
           echo "✅ Keystore, alias, and key password are all valid."
+      - name: Retrieving Google Drive access token
+        run: |
+          echo "🔐 Reveiceing Google OAuth2 access token..."
+          TOKEN_RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
+            -d client_id="$CLIENT_ID" \
+            -d client_secret="$CLIENT_SECRET" \
+            -d refresh_token="$REFRESH_TOKEN" \
+            -d grant_type=refresh_token)
+          ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r .access_token)
+          echo "::add-mask::$ACCESS_TOKEN"
+          
+          if [ "$ACCESS_TOKEN" == "null" ] || [ -z "$ACCESS_TOKEN" ]; then
+            echo "❌ Failed to retrieve Google access token!"
+            echo "$TOKEN_RESPONSE"
+            exit 1
+          fi
+          
+          echo "GDRIVE_ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+          
+          echo "✅ Google OAuth2 access token retrieved and stored."
 
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -170,14 +190,7 @@ jobs:
           VERSION_SUFFIX: ${{ env.VERSION_SUFFIX }}
         run: |
           set -e
-          echo "🔐 Retrieving Google Drive access token..."
-          TOKEN_RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
-            -d client_id="$CLIENT_ID" \
-            -d client_secret="$CLIENT_SECRET" \
-            -d refresh_token="$REFRESH_TOKEN" \
-            -d grant_type=refresh_token)
-          ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r .access_token)
-          echo "::add-mask::$ACCESS_TOKEN"
+          echo "🔐 Upload Google Drive..."
 
           echo "📁 Checking or creating folder: AAPS"
           AAPS_FOLDER_ID=$(curl -s -X GET \
@@ -220,6 +233,16 @@ jobs:
             if [ ! -f "$FILE" ]; then
               echo "❌ File not found: $FILE"
               exit 26
+            fi
+          
+            FILE_ID=$(curl -s \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              "https://www.googleapis.com/drive/v3/files?q=name='${NAME}' and '${VERSION_FOLDER_ID}' in parents and trashed=false&fields=files(id)" | jq -r '.files[0].id')
+          
+            if [[ "$FILE_ID" != "null" ]]; then
+            curl -s -X DELETE \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+                "https://www.googleapis.com/drive/v3/files/${FILE_ID}"
             fi
 
             echo "⬆️ Uploading $FILE to Google Drive as $NAME..."
