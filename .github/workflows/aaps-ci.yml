@@ -23,41 +23,59 @@ jobs:
     name: Build AAPS
     runs-on: ubuntu-latest
     steps:
+      - name: Decode keystore
+        run: |
+          mkdir -p "$RUNNER_TEMP/keystore"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/keystore/keystore.jks"
+
       - name: Check Secrets
         run: |
+          echo "🔍 Checking required secrets..."
+
           MISSING=0
-          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "❌ Missing secret: KEYSTORE_BASE64"
-            MISSING=1
-          fi
-          if [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
-            echo "❌ Missing secret: KEYSTORE_PASSWORD"
-            MISSING=1
-          fi
-          if [ -z "${{ secrets.KEY_ALIAS }}" ]; then
-            echo "❌ Missing secret: KEY_ALIAS"
-            MISSING=1
-          fi
-          if [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
-            echo "❌ Missing secret: KEY_PASSWORD"
-            MISSING=1
-          fi
-          if [ "${{ github.event.inputs.uploadTool }}" = "dropbox" ]; then
-            if [ -z "${{ secrets.DROPBOX_ACCESS_TOKEN }}" ]; then
-              echo "❌ Missing secret: DROPBOX_ACCESS_TOKEN (required for Dropbox upload)"
-              echo ""
-              echo "🔧 Please create an app and generate a token at:"
-              echo "👉 https://www.dropbox.com/developers/apps"
-              echo ""
-              echo "📘 For detailed instructions, see:"
-              echo "🔗 https://androidaps.readthedocs.io/en/latest/SettingUpAaps/BuildingAaps.html#upload-to-dropbox"
+
+          check_secret() {
+            if [ -z "$1" ]; then
+              echo "❌ Missing secret: $2"
               MISSING=1
             fi
-          fi
+          }
+
+          # Check keystore secrets
+          check_secret "${{ secrets.KEYSTORE_BASE64 }}" "KEYSTORE_BASE64"
+          check_secret "${{ secrets.KEYSTORE_PASSWORD }}" "KEYSTORE_PASSWORD"
+          check_secret "${{ secrets.KEY_ALIAS }}" "KEY_ALIAS"
+          check_secret "${{ secrets.KEY_PASSWORD }}" "KEY_PASSWORD"
+
+          check_secret "${{ secrets.GDRIVE_CLIENT_ID }}" "GDRIVE_CLIENT_ID"
+          check_secret "${{ secrets.GDRIVE_CLIENT_SECRET }}" "GDRIVE_CLIENT_SECRET"
+          check_secret "${{ secrets.GDRIVE_REFRESH_TOKEN }}" "GDRIVE_REFRESH_TOKEN"
+
           if [ "$MISSING" -eq 1 ]; then
-            echo "🛑 One or more required secrets are missing. Failing the build."
+            echo "🛑 One or more required secrets are missing. Stopping build."
             exit 1
           fi
+          
+          echo "✅ All required secrets are present."
+
+          keytool -list \
+            -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" > /dev/null || {
+              echo "❌ Keystore cannot be read with provided KEYSTORE_PASSWORD!"
+              exit 1
+            }
+
+          keytool -keypasswd \
+            -alias "${{ secrets.KEY_ALIAS }}" \
+            -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+            -keypass "${{ secrets.KEY_PASSWORD }}" \
+            -new "${{ secrets.KEY_PASSWORD }}" > /dev/null || {
+              echo "❌ KEY_ALIAS not found or KEY_PASSWORD incorrect!"
+              exit 1
+            }
+
+          echo "✅ Keystore, alias, and key password are all valid."
 
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -89,7 +107,7 @@ jobs:
           echo "VERSION_SUFFIX=$VERSION_SUFFIX" >> $GITHUB_ENV
           echo "VERSION_SUFFIX: $VERSION_SUFFIX"
 
-      - name: Extract VERSION_NAME for App and Wear
+      - name: Extract VERSION
         run: |
           BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
           if echo "$BRANCH_NAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
@@ -122,11 +140,6 @@ jobs:
           java-version: ${{ env.JDK_VERSION }}
           distribution: 'temurin'
           cache: gradle
-
-      - name: Decode keystore
-        run: |
-          mkdir -p "$RUNNER_TEMP/keystore"
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/keystore/keystore.jks"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
