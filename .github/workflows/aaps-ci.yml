@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Decode keystore
         run: |
+          DDRIVE_CLIENT_ID="705061051276-5ssikkg2ag39l7hj9t63saq549n3s2n5.apps.googleusercontent.com"
+          echo "DDRIVE_CLIENT_ID=$DDRIVE_CLIENT_ID" >> $GITHUB_ENV
           mkdir -p "$RUNNER_TEMP/keystore"
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/keystore/keystore.jks"
 
@@ -48,7 +50,6 @@ jobs:
           check_secret "${{ secrets.KEY_PASSWORD }}" "KEY_PASSWORD"
 
           check_secret "${{ secrets.GDRIVE_CLIENT_ID }}" "GDRIVE_CLIENT_ID"
-          check_secret "${{ secrets.GDRIVE_CLIENT_SECRET }}" "GDRIVE_CLIENT_SECRET"
           check_secret "${{ secrets.GDRIVE_REFRESH_TOKEN }}" "GDRIVE_REFRESH_TOKEN"
 
           if [ "$MISSING" -eq 1 ]; then
@@ -83,13 +84,11 @@ jobs:
       - name: Retrieving Google Drive access token
         env:
           CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
         run: |
-          echo "🔐 Reveiceing Google OAuth2 access token..."
+          echo "🔐 Receiving Google OAuth2 access token using PKCE..."
           TOKEN_RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
             -d client_id="$CLIENT_ID" \
-            -d client_secret="$CLIENT_SECRET" \
             -d refresh_token="$REFRESH_TOKEN" \
             -d grant_type=refresh_token)
           ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r .access_token)
@@ -191,7 +190,6 @@ jobs:
       - name: Upload APKs to Google Drive
         env:
           CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
           VERSION: ${{ env.VERSION }}
           VERSION_SUFFIX: ${{ env.VERSION_SUFFIX }}
