@@ -82,7 +82,7 @@ jobs:
 
       - name: Retrieving Google Drive access token
         env:
-          CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          CLIENT_ID: ${{ env.GDRIVE_CLIENT_ID }}
           REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
         run: |
           echo "🔐 Receiving Google OAuth2 access token using PKCE..."
@@ -188,7 +188,7 @@ jobs:
 
       - name: Upload APKs to Google Drive
         env:
-          CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          CLIENT_ID: ${{ env.GDRIVE_CLIENT_ID }}
           REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
           VERSION: ${{ env.VERSION }}
           VERSION_SUFFIX: ${{ env.VERSION_SUFFIX }}
