@@ -25,8 +25,8 @@ jobs:
     steps:
       - name: Decode keystore
         run: |
-          DDRIVE_CLIENT_ID="705061051276-5ssikkg2ag39l7hj9t63saq549n3s2n5.apps.googleusercontent.com"
-          echo "DDRIVE_CLIENT_ID=$DDRIVE_CLIENT_ID" >> $GITHUB_ENV
+          GDRIVE_CLIENT_ID="705061051276-5ssikkg2ag39l7hj9t63saq549n3s2n5.apps.googleusercontent.com"
+          echo "GDRIVE_CLIENT_ID=$GDRIVE_CLIENT_ID" >> $GITHUB_ENV
           mkdir -p "$RUNNER_TEMP/keystore"
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/keystore/keystore.jks"
 
