@@ -49,7 +49,6 @@ jobs:
           check_secret "${{ secrets.KEY_ALIAS }}" "KEY_ALIAS"
           check_secret "${{ secrets.KEY_PASSWORD }}" "KEY_PASSWORD"
 
-          check_secret "${{ secrets.GDRIVE_CLIENT_ID }}" "GDRIVE_CLIENT_ID"
           check_secret "${{ secrets.GDRIVE_REFRESH_TOKEN }}" "GDRIVE_REFRESH_TOKEN"
 
           if [ "$MISSING" -eq 1 ]; then
