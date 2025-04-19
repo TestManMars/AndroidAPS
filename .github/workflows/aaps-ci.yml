@@ -82,9 +82,19 @@ jobs:
 
       - name: Retrieving Google Drive access token
         env:
-          CLIENT_ID: ${{ env.GDRIVE_CLIENT_ID }}
+          CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
           REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
         run: |
+          if [ -z "${{ secrets.GDRIVE_CLIENT_ID }}" ]; then
+            //use default client id
+            GDRIVE_CLIENT_ID=""705061051276-5ssikkg2ag39l7hj9t63saq549n3s2n5.apps.googleusercontent.com""
+            echo "ℹ️ Using default GDRIVE_CLIENT_ID"
+          else
+            GDRIVE_CLIENT_ID="${{ secrets.GDRIVE_CLIENT_ID }}"
+            echo "ℹ️ Using repository GDRIVE_CLIENT_ID"
+          fi
+          echo "GDRIVE_CLIENT_ID=$GDRIVE_CLIENT_ID" >> $GITHUB_ENV
+          
           echo "🔐 Receiving Google OAuth2 access token using PKCE..."
           TOKEN_RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
             -d client_id="$CLIENT_ID" \
@@ -188,7 +198,6 @@ jobs:
 
       - name: Upload APKs to Google Drive
         env:
-          CLIENT_ID: ${{ env.GDRIVE_CLIENT_ID }}
           REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
           VERSION: ${{ env.VERSION }}
           VERSION_SUFFIX: ${{ env.VERSION_SUFFIX }}
