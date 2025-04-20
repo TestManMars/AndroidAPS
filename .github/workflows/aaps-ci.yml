@@ -97,7 +97,7 @@ jobs:
           
           echo "🔐 Receiving Google OAuth2 access token using PKCE..."
           TOKEN_RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
-            -d client_id="$CLIENT_ID" \
+            -d client_id="$GDRIVE_CLIENT_ID" \
             -d refresh_token="$REFRESH_TOKEN" \
             -d grant_type=refresh_token)
           ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r .access_token)
