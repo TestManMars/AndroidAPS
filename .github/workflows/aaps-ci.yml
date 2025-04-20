@@ -86,7 +86,7 @@ jobs:
           REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
         run: |
           if [ -z "${{ secrets.GDRIVE_CLIENT_ID }}" ]; then
-            ＃use default client id
+            #use default client id
             GDRIVE_CLIENT_ID=""705061051276-5ssikkg2ag39l7hj9t63saq549n3s2n5.apps.googleusercontent.com""
             echo "ℹ️ Using default GDRIVE_CLIENT_ID"
           else
