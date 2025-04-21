@@ -243,15 +243,23 @@ jobs:
             fi
             
             echo "Check File Exists"
+            if [ ! -f "$FILE" ]; then
+              echo "❌ File not found: $FILE"
+              exit 26
+            fi
+            echo "📄 Check if file $NAME exists in Google Drive..."
+            QUERY="name='${NAME}' and '${VERSION_FOLDER_ID}' in parents and trashed=false"
+            ENCODED_QUERY=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$QUERY'''))")
             FILE_ID=$(curl -s \
               -H "Authorization: Bearer $ACCESS_TOKEN" \
-              "https://www.googleapis.com/drive/v3/files?q=name='${NAME}' and '${VERSION_FOLDER_ID}' in parents and trashed=false&fields=files(id)" | jq -r '.files[0].id')
-            
-            if [[ "$FILE_ID" != "null" ]]; then
-              echo "Delete File $FILE_ID"
+              "https://www.googleapis.com/drive/v3/files?q=${ENCODED_QUERY}&fields=files(id)" \
+              | jq -r '.files[0].id')
+          
+            if [[ -n "$FILE_ID" && "$FILE_ID" != "null" ]]; then
+              echo "🗑️ Deleting existing file with ID: $FILE_ID"
               curl -s -X DELETE \
-                -H "Authorization: Bearer $ACCESS_TOKEN" \
-                  "https://www.googleapis.com/drive/v3/files/${FILE_ID}"
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              "https://www.googleapis.com/drive/v3/files/${FILE_ID}"
             fi
 
             echo "⬆️ Uploading $FILE to Google Drive as $NAME..."
