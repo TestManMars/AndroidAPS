@@ -60,7 +60,7 @@ jobs:
 
       - name: Validate keystore, alias, and password
         run: |
-          echo "🔐 Validating keystore, alias, and key password using jarsigner...
+          echo "🔐 Validating keystore, alias, and key password using jarsigner..."
           # Create a dummy JAR file (quick method using zip)
           echo "test" > dummy.txt
           zip -q dummy.jar dummy.txt
