@@ -64,7 +64,7 @@ jobs:
           # Create a dummy JAR file (quick method using zip)
           echo "test" > dummy.txt
           zip -q dummy.jar dummy.txt
-          rm -rm dummy.txt
+          rm dummy.txt
           
           # Attempt to validate using jarsigner
           JARSIGNER_LOG=$(mktemp)
