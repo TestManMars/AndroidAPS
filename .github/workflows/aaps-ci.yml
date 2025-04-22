@@ -17,55 +17,95 @@ on:
           - aapsclient2Debug
           - pumpcontrolRelease
           - pumpcontrolDebug
-      uploadTarget:
-        description: 'Select Upload Target'
-        required: true
-        default: 'artifacts'
-        type: choice
-        options:
-          - dropbox
-          - artifacts
 
 jobs:
   build:
     name: Build AAPS
     runs-on: ubuntu-latest
     steps:
+      - name: Decode keystore
+        run: |
+          mkdir -p "$RUNNER_TEMP/keystore"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/keystore/keystore.jks"
+
       - name: Check Secrets
         run: |
+          echo "🔍 Checking required secrets..."
+
           MISSING=0
-          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "❌ Missing secret: KEYSTORE_BASE64"
-            MISSING=1
-          fi
-          if [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
-            echo "❌ Missing secret: KEYSTORE_PASSWORD"
-            MISSING=1
-          fi
-          if [ -z "${{ secrets.KEY_ALIAS }}" ]; then
-            echo "❌ Missing secret: KEY_ALIAS"
-            MISSING=1
-          fi
-          if [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
-            echo "❌ Missing secret: KEY_PASSWORD"
-            MISSING=1
-          fi
-          if [ "${{ github.event.inputs.uploadTool }}" = "dropbox" ]; then
-            if [ -z "${{ secrets.DROPBOX_ACCESS_TOKEN }}" ]; then
-              echo "❌ Missing secret: DROPBOX_ACCESS_TOKEN (required for Dropbox upload)"
-              echo ""
-              echo "🔧 Please create an app and generate a token at:"
-              echo "👉 https://www.dropbox.com/developers/apps"
-              echo ""
-              echo "📘 For detailed instructions, see:"
-              echo "🔗 https://androidaps.readthedocs.io/en/latest/SettingUpAaps/BuildingAaps.html#upload-to-dropbox"
+
+          check_secret() {
+            if [ -z "$1" ]; then
+              echo "❌ Missing secret: $2"
               MISSING=1
             fi
-          fi
+          }
+
+          # Check keystore secrets
+          check_secret "${{ secrets.KEYSTORE_BASE64 }}" "KEYSTORE_BASE64"
+          check_secret "${{ secrets.KEYSTORE_PASSWORD }}" "KEYSTORE_PASSWORD"
+          check_secret "${{ secrets.KEY_ALIAS }}" "KEY_ALIAS"
+          check_secret "${{ secrets.KEY_PASSWORD }}" "KEY_PASSWORD"
+
+          check_secret "${{ secrets.GDRIVE_CLIENT_ID }}" "GDRIVE_CLIENT_ID"
+          check_secret "${{ secrets.GDRIVE_CLIENT_SECRET }}" "GDRIVE_CLIENT_SECRET"
+          check_secret "${{ secrets.GDRIVE_REFRESH_TOKEN }}" "GDRIVE_REFRESH_TOKEN"
+
           if [ "$MISSING" -eq 1 ]; then
-            echo "🛑 One or more required secrets are missing. Failing the build."
+            echo "🛑 One or more required secrets are missing. Stopping build."
             exit 1
           fi
+          
+          echo "✅ All required secrets are present."
+
+      - name: Validate keystore, alias, and password
+        run: |
+          echo "🔐 Validating keystore, alias, and key password using jarsigner..."
+          # Create a dummy JAR file (quick method using zip)
+          echo "test" > dummy.txt
+          zip -q dummy.jar dummy.txt
+          rm dummy.txt
+          
+          # Attempt to validate using jarsigner
+          JARSIGNER_LOG=$(mktemp)
+          if ! jarsigner \
+              -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
+              -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+              -keypass "${{ secrets.KEY_PASSWORD }}" \
+              dummy.jar "${{ secrets.KEY_ALIAS }}" > "$JARSIGNER_LOG" 2>&1; then
+            echo "❌ Either KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_PASSWORD, or KEY_ALIAS is incorrect"
+            echo "🔍 jarsigner error output:"
+            cat "$JARSIGNER_LOG"
+            rm -f "$JARSIGNER_LOG" dummy.jar
+            exit 1
+          fi
+          rm -f "$JARSIGNER_LOG" dummy.jar
+          echo "✅ Keystore, alias, and key password are valid."
+
+      - name: Retrieving Google Drive access token
+        env:
+          CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+        run: |
+          echo "🔐 Reveiceing Google OAuth2 access token..."
+          TOKEN_RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
+            -d client_id="$CLIENT_ID" \
+            -d client_secret="$CLIENT_SECRET" \
+            -d refresh_token="$REFRESH_TOKEN" \
+            -d grant_type=refresh_token)
+          ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r .access_token)
+          echo "::add-mask::$ACCESS_TOKEN"
+          
+          if [ "$ACCESS_TOKEN" == "null" ] || [ -z "$ACCESS_TOKEN" ]; then
+            echo "❌ Failed to retrieve Google access token!"
+            echo "$TOKEN_RESPONSE"
+            exit 1
+          fi
+          
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+          
+          echo "✅ Google OAuth2 access token retrieved and stored."
 
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -97,7 +137,7 @@ jobs:
           echo "VERSION_SUFFIX=$VERSION_SUFFIX" >> $GITHUB_ENV
           echo "VERSION_SUFFIX: $VERSION_SUFFIX"
 
-      - name: Extract VERSION_NAME for App and Wear
+      - name: Extract VERSION
         run: |
           BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
           if echo "$BRANCH_NAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
@@ -112,8 +152,6 @@ jobs:
       - name: Map JDK version by app version
         run: |
           case "$VERSION" in
-            2.6.2) JDK_VERSION="11" ;;
-            2.8.2.1) JDK_VERSION="11" ;;
             3.1.0.3) JDK_VERSION="17" ;;
             3.2.0.4) JDK_VERSION="19" ;;
             3.3.*) JDK_VERSION="21" ;;
@@ -132,11 +170,6 @@ jobs:
           java-version: ${{ env.JDK_VERSION }}
           distribution: 'temurin'
           cache: gradle
-
-      - name: Decode keystore
-        run: |
-          mkdir -p "$RUNNER_TEMP/keystore"
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/keystore/keystore.jks"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -157,74 +190,97 @@ jobs:
           mv wear/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk \
             aaps-wear-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk
 
-      - name: Upload APKs to Dropbox
-        if: ${{ github.event.inputs.uploadTarget }} == "dropbox"
-        run: |
-          RESPONSE=$(curl -s -X POST https://api.dropbox.com/oauth2/token \
-            -u "${{ secrets.DROPBOX_APP_KEY }}:${{ secrets.DROPBOX_APP_SECRET }}" \
-            -d grant_type=refresh_token \
-            -d refresh_token=${{ secrets.DROPBOX_REFRESH_TOKEN }})
-
-          ACCESS_TOKEN=$(echo "$RESPONSE" | jq -r .access_token)
-          echo "::add-mask::$ACCESS_TOKEN"
-          echo "access_token=$ACCESS_TOKEN" >> $GITHUB_ENV
-        
-          upload_to_dropbox() {
-            FILE_PATH=$1
-            DROPBOX_DEST=$2
-            if [ ! -f "$FILE_PATH" ]; then
-              echo "❌ File not found: $FILE_PATH"
-              exit 1
-            fi
-            echo "⬆️ Uploading $FILE_PATH to Dropbox as $DROPBOX_DEST..."
-            RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/response.json \
-              -X POST https://content.dropboxapi.com/2/files/upload \
-              --header "Authorization: Bearer $ACCESS_TOKEN" \
-              --header "Dropbox-API-Arg: {\"path\": \"/$DROPBOX_DEST\",\"mode\": \"overwrite\",\"autorename\": false,\"mute\": false}" \
-              --header "Content-Type: application/octet-stream" \
-              --data-binary @"$FILE_PATH")
-            HTTP_CODE="${RESPONSE: -3}"
-            if [[ "$HTTP_CODE" != "200" ]]; then
-              echo "❌ Upload failed with HTTP status: $HTTP_CODE"
-              cat /tmp/response.json
-              exit 1
-            fi
-            echo "✅ Upload successful: $DROPBOX_DEST"
-          }
-          upload_to_dropbox "aaps-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk" "${{ env.VERSION }}/aaps-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk"
-          upload_to_dropbox "aaps-wear-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk" "${{ env.VERSION }}/aaps-wear-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk"
-
-      - name: Prepare encrypted ZIP for artifact upload
-        if: ${{ github.event.inputs.uploadTarget == 'artifacts' }}
+      - name: Upload APKs to Google Drive
         env:
+          CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
           VERSION: ${{ env.VERSION }}
           VERSION_SUFFIX: ${{ env.VERSION_SUFFIX }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -e
-          echo "📦 Preparing encrypted APK ZIP for artifact..."
+          echo "🔐 Upload Google Drive..."
 
-          app_path="aaps-$VERSION$VERSION_SUFFIX.apk"
-          wear_path="aaps-wear-$VERSION$VERSION_SUFFIX.apk"
-          artifact_name="aaps-$VERSION$VERSION_SUFFIX"
-          zip_name="$artifact_name.zip"
-          zip_password="$KEY_PASSWORD"
+          echo "📁 Checking or creating folder: AAPS"
+          AAPS_FOLDER_ID=$(curl -s -X GET \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://www.googleapis.com/drive/v3/files?q=name='AAPS'+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false" \
+            | jq -r '.files[0].id')
 
-          echo "Uploading $app_path and $wear_path as $artifact_name"
+          if [ "$AAPS_FOLDER_ID" == "null" ] || [ -z "$AAPS_FOLDER_ID" ]; then
+            AAPS_FOLDER_ID=$(curl -s -X POST \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"name": "AAPS", "mimeType": "application/vnd.google-apps.folder"}' \
+              "https://www.googleapis.com/drive/v3/files" | jq -r '.id')
+            echo "📂 Created AAPS folder: $AAPS_FOLDER_ID"
+          else
+            echo "📂 Found AAPS folder: $AAPS_FOLDER_ID"
+          fi
 
-          mkdir -p artifacts
-          cp "$app_path" artifacts/
-          cp "$wear_path" artifacts/
+          echo "📁 Checking or creating folder: $VERSION under AAPS"
+          VERSION_FOLDER_ID=$(curl -s -X GET \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://www.googleapis.com/drive/v3/files?q=name='${VERSION}'+and+mimeType='application/vnd.google-apps.folder'+and+'$AAPS_FOLDER_ID'+in+parents+and+trashed=false" \
+            | jq -r '.files[0].id')
 
-          echo "🔐 Creating encrypted ZIP..."
-          cd artifacts
-          zip -P "$zip_password" "$zip_name" *.apk
-          cd ..
+          if [ "$VERSION_FOLDER_ID" == "null" ] || [ -z "$VERSION_FOLDER_ID" ]; then
+            VERSION_FOLDER_ID=$(curl -s -X POST \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"name\": \"${VERSION}\", \"mimeType\": \"application/vnd.google-apps.folder\", \"parents\": [\"$AAPS_FOLDER_ID\"]}" \
+              "https://www.googleapis.com/drive/v3/files" | jq -r '.id')
+            echo "📂 Created version folder: $VERSION_FOLDER_ID"
+          else
+            echo "📂 Found version folder: $VERSION_FOLDER_ID"
+          fi
 
-      - name: Upload encrypted APK zip as GitHub Artifact
-        if: ${{ github.event.inputs.uploadTarget == 'artifacts' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: aaps-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}
-          path: artifacts/*.zip
-          retention-days: 1
+          upload_to_gdrive() {
+            FILE=$1
+            NAME=$2
+
+            if [ ! -f "$FILE" ]; then
+              echo "❌ File not found: $FILE"
+              exit 26
+            fi
+          
+            echo "Check File Exists"
+            if [ ! -f "$FILE" ]; then
+              echo "❌ File not found: $FILE"
+              exit 26
+            fi
+            echo "📄 Check if file $NAME exists in Google Drive..."
+            QUERY="name='${NAME}' and '${VERSION_FOLDER_ID}' in parents and trashed=false"
+            ENCODED_QUERY=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$QUERY'''))")
+            FILE_ID=$(curl -s \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              "https://www.googleapis.com/drive/v3/files?q=${ENCODED_QUERY}&fields=files(id)" \
+              | jq -r '.files[0].id')
+          
+            if [[ -n "$FILE_ID" && "$FILE_ID" != "null" ]]; then
+              echo "🗑️ Deleting existing file with ID: $FILE_ID"
+              curl -s -X DELETE \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              "https://www.googleapis.com/drive/v3/files/${FILE_ID}"
+            fi
+
+            echo "⬆️ Uploading $FILE to Google Drive as $NAME..."
+            RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/gdrive_response.json \
+              -X POST \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -F "metadata={\"name\":\"$NAME\", \"parents\":[\"$VERSION_FOLDER_ID\"]};type=application/json;charset=UTF-8" \
+              -F "file=@$FILE;type=application/vnd.android.package-archive" \
+              "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart")
+
+            HTTP_CODE="${RESPONSE: -3}"
+            if [[ "$HTTP_CODE" != "200" && "$HTTP_CODE" != "201" ]]; then
+              echo "❌ Upload failed with HTTP status: $HTTP_CODE"
+              echo "🔍 Response:"
+              cat /tmp/gdrive_response.json
+              exit 1
+            fi
+            echo "✅ Upload successful: $NAME"
+          }
+
+          upload_to_gdrive "aaps-${VERSION}${VERSION_SUFFIX}.apk" "aaps-${VERSION}${VERSION_SUFFIX}.apk"
+          upload_to_gdrive "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk" "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk"
