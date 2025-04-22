@@ -58,27 +58,29 @@ jobs:
           
           echo "✅ All required secrets are present."
 
-      - name: Validating keystore, alias and password
+      - name: Validate keystore, alias, and password
         run: |
-          echo "🔐 Validating keystore, alias and password"
-  
-          KEYTOOL_LOG=$(mktemp)
+          echo "🔐 Validating keystore, alias, and key password using jarsigner...
+          # Create a dummy JAR file (quick method using zip)
+          echo "test" > dummy.txt
+          zip -q dummy.jar dummy.txt
+          rm -rm dummy.txt
           
-          if ! keytool -list \
-              -alias "${{ secrets.KEY_ALIAS }}" \
+          # Attempt to validate using jarsigner
+          JARSIGNER_LOG=$(mktemp)
+          if ! jarsigner \
               -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
               -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-              -keypass "${{ secrets.KEY_PASSWORD }}" > /dev/null 2> "$KEYTOOL_LOG"; then
-            echo "❌ KEYSTORE_BASE64 or KEY_ALIAS or KEY_PASSWORD or KEYSTORE_PASSWORD incorrect!"
-            echo "🔍 keytool error output:"
-            cat "$KEYTOOL_LOG"
-            rm -f "$KEYTOOL_LOG"
+              -keypass "${{ secrets.KEY_PASSWORD }}" \
+              dummy.jar "${{ secrets.KEY_ALIAS }}" > /dev/null 2> "$JARSIGNER_LOG"; then
+            echo "❌ Either KEYSTORE_PASSWORD, KEY_PASSWORD, or KEY_ALIAS is incorrect"
+            echo "🔍 jarsigner error output:"
+            cat "$JARSIGNER_LOG"
+            rm -f "$JARSIGNER_LOG" dummy.jar
             exit 1
           fi
-          
-          rm -f "$KEYTOOL_LOG"
-
-          echo "✅ Keystore, alias, and key password are all valid."
+          rm -f "$JARSIGNER_LOG" dummy.jar
+          echo "✅ Keystore, alias, and key password are valid."
 
       - name: Retrieving Google Drive access token
         env:
