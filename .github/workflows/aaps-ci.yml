@@ -48,28 +48,6 @@ jobs:
             echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
           fi
 
-      - name: Decode GDrive OAuth2 secrets
-        run: |
-          if [ -n "${{ secrets.GDRIVE_OAUTH2 }}" ]; then
-            echo "🔐 Decoding GDRIVE_OAUTH2..."
-            DECODED=$(echo "${{ secrets.GDRIVE_OAUTH2 }}" | base64 -d)
-
-            GDRIVE_CLIENT_ID=$(echo "$DECODED" | cut -d'|' -f1)
-            GDRIVE_REFRESH_TOKEN=$(echo "$DECODED" | cut -d'|' -f2)
-
-            echo "::add-mask::$GDRIVE_CLIENT_ID"
-            echo "::add-mask::$GDRIVE_REFRESH_TOKEN"
-
-            echo "GDRIVE_CLIENT_ID=$GDRIVE_CLIENT_ID" >> $GITHUB_ENV
-            echo "GDRIVE_REFRESH_TOKEN=$GDRIVE_REFRESH_TOKEN" >> $GITHUB_ENV
-
-            echo "✅ GDRIVE_CLIENT_ID and GDRIVE_REFRESH_TOKEN extracted from GDRIVE_OAUTH2"
-          else
-            echo "ℹ️ GDRIVE_OAUTH2 not provided, using separate secrets."
-            echo "GDRIVE_CLIENT_ID=${{ secrets.GDRIVE_CLIENT_ID }}" >> $GITHUB_ENV
-            echo "GDRIVE_REFRESH_TOKEN=${{ secrets.GDRIVE_REFRESH_TOKEN }}" >> $GITHUB_ENV
-          fi
-
       - name: Check Secrets
         run: |
           echo "🔍 Checking required secrets..."
@@ -93,12 +71,7 @@ jobs:
           fi
 
           # Check GDrive secrets
-          if [ -z "${{ secrets.GDRIVE_OAUTH2 }}" ]; then
-            check_secret "${{ secrets.GDRIVE_CLIENT_ID }}" "GDRIVE_CLIENT_ID"
-            check_secret "${{ secrets.GDRIVE_REFRESH_TOKEN }}" "GDRIVE_REFRESH_TOKEN"
-          else
-            echo "ℹ️ GDRIVE_OAUTH2 is set, skipping individual GDrive secret checks."
-          fi
+          check_secret "${{ secrets.GDRIVE_OAUTH2 }}" "GDRIVE_OAUTH2"
 
           if [ "$MISSING" -eq 1 ]; then
             echo "🛑 Missing required secrets. Stopping build."
@@ -131,6 +104,22 @@ jobs:
 
           rm -f "$KEYTOOL_LOG"
           echo "✅ Keystore and credentials validated."
+
+      - name: Decode GDrive OAuth2 secrets
+        run: |
+          echo "🔐 Decoding GDRIVE_OAUTH2..."
+          DECODED=$(echo "${{ secrets.GDRIVE_OAUTH2 }}" | base64 -d)
+          
+          GDRIVE_CLIENT_ID=$(echo "$DECODED" | cut -d'|' -f1)
+          GDRIVE_REFRESH_TOKEN=$(echo "$DECODED" | cut -d'|' -f2)
+          
+          echo "::add-mask::$GDRIVE_CLIENT_ID"
+          echo "::add-mask::$GDRIVE_REFRESH_TOKEN"
+          
+          echo "GDRIVE_CLIENT_ID=$GDRIVE_CLIENT_ID" >> $GITHUB_ENV
+          echo "GDRIVE_REFRESH_TOKEN=$GDRIVE_REFRESH_TOKEN" >> $GITHUB_ENV
+          
+          echo "✅ GDRIVE_CLIENT_ID and GDRIVE_REFRESH_TOKEN extracted from GDRIVE_OAUTH2"
 
       - name: Retrieving Google Drive access token
         run: |
@@ -208,11 +197,6 @@ jobs:
         run: |
           mv app/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk aaps-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk
           mv wear/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk aaps-wear-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk
-
-      - name: Upload APKs to Google Drive
-        run: |
-          set -e
-          echo "🔐 Upload Google Drive..."
 
       - name: Upload APKs to Google Drive
         run: |
