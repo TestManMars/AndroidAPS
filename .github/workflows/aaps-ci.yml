@@ -33,16 +33,14 @@ jobs:
           if [ -n "${{ secrets.GDRIVE_OAUTH2 }}" ]; then
             echo "🔐 Decoding GDRIVE_OAUTH2..."
             DECODED=$(echo "${{ secrets.GDRIVE_OAUTH2 }}" | base64 -d)
-            CLIENT_ID_ENC=$(echo "$DECODED" | cut -d'|' -f1)
-            REFRESH_TOKEN_ENC=$(echo "$DECODED" | cut -d'|' -f2)
 
-            GDRIVE_CLIENT_ID=$(echo "$CLIENT_ID_ENC" | base64 -d)
-            GDRIVE_REFRESH_TOKEN=$(echo "$REFRESH_TOKEN_ENC" | base64 -d)
+            GDRIVE_CLIENT_ID=$(echo "$DECODED" | cut -d'|' -f1)
+            GDRIVE_REFRESH_TOKEN=$(echo "$DECODED" | cut -d'|' -f2)
 
             echo "GDRIVE_CLIENT_ID=$GDRIVE_CLIENT_ID" >> $GITHUB_ENV
             echo "GDRIVE_REFRESH_TOKEN=$GDRIVE_REFRESH_TOKEN" >> $GITHUB_ENV
 
-            echo "✅ GDRIVE_CLIENT_ID and GDRIVE_REFRESH_TOKEN decoded from GDRIVE_OAUTH2"
+            echo "✅ GDRIVE_CLIENT_ID and GDRIVE_REFRESH_TOKEN extracted from GDRIVE_OAUTH2"
           else
             echo "ℹ️ GDRIVE_OAUTH2 not provided, using separate secrets."
             echo "GDRIVE_CLIENT_ID=${{ secrets.GDRIVE_CLIENT_ID }}" >> $GITHUB_ENV
