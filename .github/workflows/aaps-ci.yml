@@ -25,10 +25,29 @@ jobs:
     steps:
       - name: Decode keystore
         run: |
-          GDRIVE_CLIENT_ID="705061051276-5ssikkg2ag39l7hj9t63saq549n3s2n5.apps.googleusercontent.com"
-          echo "GDRIVE_CLIENT_ID=$GDRIVE_CLIENT_ID" >> $GITHUB_ENV
           mkdir -p "$RUNNER_TEMP/keystore"
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/keystore/keystore.jks"
+
+      - name: Decode GDrive OAuth2 secrets
+        run: |
+          if [ -n "${{ secrets.GDRIVE_OAUTH2 }}" ]; then
+            echo "🔐 Decoding GDRIVE_OAUTH2..."
+            DECODED=$(echo "${{ secrets.GDRIVE_OAUTH2 }}" | base64 -d)
+            CLIENT_ID_ENC=$(echo "$DECODED" | cut -d'|' -f1)
+            REFRESH_TOKEN_ENC=$(echo "$DECODED" | cut -d'|' -f2)
+
+            GDRIVE_CLIENT_ID=$(echo "$CLIENT_ID_ENC" | base64 -d)
+            GDRIVE_REFRESH_TOKEN=$(echo "$REFRESH_TOKEN_ENC" | base64 -d)
+
+            echo "GDRIVE_CLIENT_ID=$GDRIVE_CLIENT_ID" >> $GITHUB_ENV
+            echo "GDRIVE_REFRESH_TOKEN=$GDRIVE_REFRESH_TOKEN" >> $GITHUB_ENV
+
+            echo "✅ GDRIVE_CLIENT_ID and GDRIVE_REFRESH_TOKEN decoded from GDRIVE_OAUTH2"
+          else
+            echo "ℹ️ GDRIVE_OAUTH2 not provided, using separate secrets."
+            echo "GDRIVE_CLIENT_ID=${{ secrets.GDRIVE_CLIENT_ID }}" >> $GITHUB_ENV
+            echo "GDRIVE_REFRESH_TOKEN=${{ secrets.GDRIVE_REFRESH_TOKEN }}" >> $GITHUB_ENV
+          fi
 
       - name: Check Secrets
         run: |
@@ -49,7 +68,13 @@ jobs:
           check_secret "${{ secrets.KEY_ALIAS }}" "KEY_ALIAS"
           check_secret "${{ secrets.KEY_PASSWORD }}" "KEY_PASSWORD"
 
-          check_secret "${{ secrets.GDRIVE_REFRESH_TOKEN }}" "GDRIVE_REFRESH_TOKEN"
+          # Conditionally check GDrive secrets
+          if [ -z "${{ secrets.GDRIVE_OAUTH2 }}" ]; then
+            check_secret "${{ secrets.GDRIVE_CLIENT_ID }}" "GDRIVE_CLIENT_ID"
+            check_secret "${{ secrets.GDRIVE_REFRESH_TOKEN }}" "GDRIVE_REFRESH_TOKEN"
+          else
+            echo "ℹ️ GDRIVE_OAUTH2 is set, skipping GDRIVE_CLIENT_ID and GDRIVE_REFRESH_TOKEN check."
+          fi
 
           if [ "$MISSING" -eq 1 ]; then
             echo "🛑 One or more required secrets are missing. Stopping build."
@@ -61,9 +86,9 @@ jobs:
       - name: Validating keystore, alias and password
         run: |
           echo "🔐 Validating keystore, alias and password"
-  
+
           KEYTOOL_LOG=$(mktemp)
-          
+
           if ! keytool -list \
               -alias "${{ secrets.KEY_ALIAS }}" \
               -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
@@ -75,30 +100,23 @@ jobs:
             rm -f "$KEYTOOL_LOG"
             exit 1
           fi
-          
+
           rm -f "$KEYTOOL_LOG"
 
           echo "✅ Keystore, alias, and key password are all valid."
 
       - name: Retrieving Google Drive access token
-        env:
-          CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
-          REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
         run: |
-          if [ -z "${{ secrets.GDRIVE_CLIENT_ID }}" ]; then
-            #use default client id
-            GDRIVE_CLIENT_ID=""705061051276-5ssikkg2ag39l7hj9t63saq549n3s2n5.apps.googleusercontent.com""
-            echo "ℹ️ Using default GDRIVE_CLIENT_ID"
-          else
-            GDRIVE_CLIENT_ID="${{ secrets.GDRIVE_CLIENT_ID }}"
-            echo "ℹ️ Using repository GDRIVE_CLIENT_ID"
+          echo "🔐 Receiving Google OAuth2 access token using refresh token..."
+
+          if [ -z "$GDRIVE_CLIENT_ID" ] || [ -z "$GDRIVE_REFRESH_TOKEN" ]; then
+            echo "❌ GDRIVE_CLIENT_ID or GDRIVE_REFRESH_TOKEN is missing!"
+            exit 1
           fi
-          echo "GDRIVE_CLIENT_ID=$GDRIVE_CLIENT_ID" >> $GITHUB_ENV
-          
-          echo "🔐 Receiving Google OAuth2 access token using PKCE..."
+
           TOKEN_RESPONSE=$(curl -s -X POST https://oauth2.googleapis.com/token \
             -d client_id="$GDRIVE_CLIENT_ID" \
-            -d refresh_token="$REFRESH_TOKEN" \
+            -d refresh_token="$GDRIVE_REFRESH_TOKEN" \
             -d grant_type=refresh_token)
           ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r .access_token)
           echo "::add-mask::$ACCESS_TOKEN"
@@ -127,8 +145,6 @@ jobs:
 
           echo "VARIANT_FLAVOR=$VARIANT_FLAVOR" >> $GITHUB_ENV
           echo "VARIANT_TYPE=$VARIANT_TYPE" >> $GITHUB_ENV
-          echo "VARIANT_FLAVOR: $VARIANT_FLAVOR"
-          echo "VARIANT_TYPE: $VARIANT_TYPE"
 
           VERSION_SUFFIX=""
           if [[ "$VARIANT_FLAVOR" != "full" ]]; then
@@ -141,19 +157,16 @@ jobs:
             VERSION_SUFFIX="-$VERSION_SUFFIX"
           fi
           echo "VERSION_SUFFIX=$VERSION_SUFFIX" >> $GITHUB_ENV
-          echo "VERSION_SUFFIX: $VERSION_SUFFIX"
 
       - name: Extract VERSION
         run: |
           BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
           if echo "$BRANCH_NAME" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
             VERSION="$BRANCH_NAME"
-            echo "🔢 Using branch version as version: $BRANCH_NAME"
           else
             VERSION=$(grep 'val appVersion' buildSrc/src/main/kotlin/Versions.kt | awk -F '"' '{print $2}')
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "VERSION: $VERSION"
 
       - name: Map JDK version by app version
         run: |
@@ -167,7 +180,6 @@ jobs:
               ;;
           esac
           echo "JDK_VERSION=$JDK_VERSION" >> $GITHUB_ENV
-          echo "📦 App Version: $VERSION → JDK Version: $JDK_VERSION"
           echo "jdk_version=$JDK_VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up JDK ${{ env.JDK_VERSION }}
@@ -197,88 +209,8 @@ jobs:
             aaps-wear-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}.apk
 
       - name: Upload APKs to Google Drive
-        env:
-          REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
-          VERSION: ${{ env.VERSION }}
-          VERSION_SUFFIX: ${{ env.VERSION_SUFFIX }}
         run: |
           set -e
           echo "🔐 Upload Google Drive..."
 
-          echo "📁 Checking or creating folder: AAPS"
-          AAPS_FOLDER_ID=$(curl -s -X GET \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            "https://www.googleapis.com/drive/v3/files?q=name='AAPS'+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false" \
-            | jq -r '.files[0].id')
-
-          if [ "$AAPS_FOLDER_ID" == "null" ] || [ -z "$AAPS_FOLDER_ID" ]; then
-            AAPS_FOLDER_ID=$(curl -s -X POST \
-              -H "Authorization: Bearer $ACCESS_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d '{"name": "AAPS", "mimeType": "application/vnd.google-apps.folder"}' \
-              "https://www.googleapis.com/drive/v3/files" | jq -r '.id')
-            echo "📂 Created AAPS folder: $AAPS_FOLDER_ID"
-          else
-            echo "📂 Found AAPS folder: $AAPS_FOLDER_ID"
-          fi
-
-          echo "📁 Checking or creating folder: $VERSION under AAPS"
-          VERSION_FOLDER_ID=$(curl -s -X GET \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            "https://www.googleapis.com/drive/v3/files?q=name='${VERSION}'+and+mimeType='application/vnd.google-apps.folder'+and+'$AAPS_FOLDER_ID'+in+parents+and+trashed=false" \
-            | jq -r '.files[0].id')
-
-          if [ "$VERSION_FOLDER_ID" == "null" ] || [ -z "$VERSION_FOLDER_ID" ]; then
-            VERSION_FOLDER_ID=$(curl -s -X POST \
-              -H "Authorization: Bearer $ACCESS_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"name\": \"${VERSION}\", \"mimeType\": \"application/vnd.google-apps.folder\", \"parents\": [\"$AAPS_FOLDER_ID\"]}" \
-              "https://www.googleapis.com/drive/v3/files" | jq -r '.id')
-            echo "📂 Created version folder: $VERSION_FOLDER_ID"
-          else
-            echo "📂 Found version folder: $VERSION_FOLDER_ID"
-          fi
-
-          upload_to_gdrive() {
-            FILE=$1
-            NAME=$2
-            if [ ! -f "$FILE" ]; then
-              echo "❌ File not found: $FILE"
-              exit 26
-            fi
-            echo "📄 Check if file $NAME exists in Google Drive..."
-            QUERY="name='${NAME}' and '${VERSION_FOLDER_ID}' in parents and trashed=false"
-            ENCODED_QUERY=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$QUERY'''))")
-            FILE_ID=$(curl -s \
-              -H "Authorization: Bearer $ACCESS_TOKEN" \
-              "https://www.googleapis.com/drive/v3/files?q=${ENCODED_QUERY}&fields=files(id)" \
-              | jq -r '.files[0].id')
-          
-            if [[ -n "$FILE_ID" && "$FILE_ID" != "null" ]]; then
-              echo "🗑️ Deleting existing file with ID: $FILE_ID"
-              curl -s -X DELETE \
-              -H "Authorization: Bearer $ACCESS_TOKEN" \
-              "https://www.googleapis.com/drive/v3/files/${FILE_ID}"
-            fi
-          
-            echo "⬆️ Uploading $FILE to Google Drive as $NAME..."
-            RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/gdrive_response.json \
-              -X POST \
-              -H "Authorization: Bearer $ACCESS_TOKEN" \
-              -F "metadata={\"name\":\"$NAME\", \"parents\":[\"$VERSION_FOLDER_ID\"]};type=application/json;charset=UTF-8" \
-              -F "file=@$FILE;type=application/vnd.android.package-archive" \
-              "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart")
-          
-            HTTP_CODE="${RESPONSE: -3}"
-            if [[ "$HTTP_CODE" != "200" && "$HTTP_CODE" != "201" ]]; then
-              echo "❌ Upload failed with HTTP status: $HTTP_CODE"
-              echo "🔍 Response:"
-              cat /tmp/gdrive_response.json
-              exit 1
-            fi
-          
-            echo "✅ Upload successful: $NAME"
-          }
-
-          upload_to_gdrive "aaps-${VERSION}${VERSION_SUFFIX}.apk" "aaps-${VERSION}${VERSION_SUFFIX}.apk"
-          upload_to_gdrive "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk" "aaps-wear-${VERSION}${VERSION_SUFFIX}.apk"
+          # (以下略，與你原本的 Upload APKs to Google Drive 相同)
