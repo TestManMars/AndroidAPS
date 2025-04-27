@@ -51,10 +51,11 @@ jobs:
 
       - name: Check Secrets
         run: |
-          echo "🔍 Checking required secrets...$1"
+          echo "🔍 Checking required secrets..."
           MISSING=0
 
           check_secret() {
+            echo "check_secret $1"
             if [ -z "$1" ]; then
               echo "❌ Missing secret: $2"
               MISSING=1
