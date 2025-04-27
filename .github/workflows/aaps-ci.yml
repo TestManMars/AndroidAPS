@@ -55,7 +55,6 @@ jobs:
           MISSING=0
 
           check_secret() {
-            echo "check_secret $1"
             if [ -z "$1" ]; then
               echo "❌ Missing secret: $2"
               MISSING=1
@@ -91,9 +90,9 @@ jobs:
           zip -q dummy.jar dummy.txt
           rm dummy.txt
 
-          echo "::add-mask::$KEYSTORE_PASSWORD"
-          echo "::add-mask::$KEY_ALIAS"
-          echo "::add-mask::$KEY_PASSWORD"
+#          echo "::add-mask::$KEYSTORE_PASSWORD"
+#          echo "::add-mask::$KEY_ALIAS"
+#          echo "::add-mask::$KEY_PASSWORD"
           
           # Attempt to validate using jarsigner
           JARSIGNER_LOG=$(mktemp)
