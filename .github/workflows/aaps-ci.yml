@@ -89,10 +89,6 @@ jobs:
           echo "test" > dummy.txt
           zip -q dummy.jar dummy.txt
           rm dummy.txt
-
-#          echo "::add-mask::$KEYSTORE_PASSWORD"
-#          echo "::add-mask::$KEY_ALIAS"
-#          echo "::add-mask::$KEY_PASSWORD"
           
           # Attempt to validate using jarsigner
           JARSIGNER_LOG=$(mktemp)
