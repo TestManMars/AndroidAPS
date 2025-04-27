@@ -34,6 +34,11 @@ jobs:
             KEY_ALIAS=$(echo "$DECODED" | cut -d'|' -f3)
             KEY_PASSWORD=$(echo "$DECODED" | cut -d'|' -f4)
 
+            echo "KEYSTORE_BASE64=$KEYSTORE_BASE64" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> $GITHUB_ENV
+            echo "KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
+
             echo "✅ Keystore parameters extracted from KEYSTORE_SET"
           else
             echo "ℹ️ KEYSTORE_SET not provided, using separate secrets."
@@ -56,17 +61,10 @@ jobs:
           }
 
           # Check keystore secrets
-          if [ -z "${{ secrets.KEYSTORE_SET }}" ]; then
-            check_secret "${{ secrets.KEYSTORE_BASE64 }}" "KEYSTORE_BASE64"
-            check_secret "${{ secrets.KEYSTORE_PASSWORD }}" "KEYSTORE_PASSWORD"
-            check_secret "${{ secrets.KEY_ALIAS }}" "KEY_ALIAS"
-            check_secret "${{ secrets.KEY_PASSWORD }}" "KEY_PASSWORD"
-          else
-            echo "ℹ️ KEYSTORE_SET is set, skipping individual keystore secret checks."
-          fi
-
-          # Check GDrive secrets
-          check_secret "${{ secrets.GDRIVE_OAUTH2 }}" "GDRIVE_OAUTH2"
+          check_secret "$KEYSTORE_BASE64" "KEYSTORE_BASE64"
+          check_secret "$KEYSTORE_PASSWORD" "KEYSTORE_PASSWORD"
+          check_secret "$KEY_ALIAS" "KEY_ALIAS"
+          check_secret "$KEY_PASSWORD" "KEY_PASSWORD"
 
           if [ "$MISSING" -eq 1 ]; then
             echo "🛑 Missing required secrets. Stopping build."
@@ -86,21 +84,24 @@ jobs:
 
           KEYTOOL_LOG=$(mktemp)
 
-            echo "::add-mask::$KEYSTORE_BASE64"
-            echo "::add-mask::$KEYSTORE_PASSWORD"
-            echo "::add-mask::$KEY_ALIAS"
-            echo "::add-mask::$KEY_PASSWORD"
-
-          if ! keytool -list \
-            -alias "$KEY_ALIAS" \
-            -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
-            -storepass "$KEYSTORE_PASSWORD" \
-            -keypass "$KEY_PASSWORD" > /dev/null 2> "$KEYTOOL_LOG"; then
-            echo "❌ Keystore or alias or passwords incorrect!"
-            cat "$KEYTOOL_LOG"
-            rm -f "$KEYTOOL_LOG"
+          echo "::add-mask::$KEYSTORE_PASSWORD"
+          echo "::add-mask::$KEY_ALIAS"
+          echo "::add-mask::$KEY_PASSWORD"
+          
+          JARSIGNER_LOG=$(mktemp)
+          if ! jarsigner \
+              -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
+              -storepass "$KEYSTORE_PASSWORD" \
+              -keypass "$KEY_PASSWORD" \
+              dummy.jar "$KEY_ALIAS" > "$JARSIGNER_LOG" 2>&1; then
+            echo "❌ Either KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_PASSWORD, or KEY_ALIAS is incorrect"
+            echo "🔍 jarsigner error output:"
+            cat "$JARSIGNER_LOG"
+            rm -f "$JARSIGNER_LOG" dummy.jar
             exit 1
           fi
+          rm -f "$JARSIGNER_LOG" dummy.jar
+          echo "✅ Keystore, alias, and key password are valid."
 
           rm -f "$KEYTOOL_LOG"
           echo "✅ Keystore and credentials validated."
