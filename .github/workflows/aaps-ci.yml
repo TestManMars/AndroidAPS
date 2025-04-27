@@ -83,6 +83,7 @@ jobs:
 
       - name: Validating keystore, alias and password
         run: |
+          set -x
           echo "🔐 Validating keystore, alias and password"
 
           # Create a dummy JAR file (quick method using zip)
