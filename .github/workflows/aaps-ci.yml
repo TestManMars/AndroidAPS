@@ -82,12 +82,16 @@ jobs:
         run: |
           echo "🔐 Validating keystore, alias and password"
 
-          KEYTOOL_LOG=$(mktemp)
+          # Create a dummy JAR file (quick method using zip)
+          echo "test" > dummy.txt
+          zip -q dummy.jar dummy.txt
+          rm dummy.txt
 
           echo "::add-mask::$KEYSTORE_PASSWORD"
           echo "::add-mask::$KEY_ALIAS"
           echo "::add-mask::$KEY_PASSWORD"
           
+          # Attempt to validate using jarsigner
           JARSIGNER_LOG=$(mktemp)
           if ! jarsigner \
               -keystore "$RUNNER_TEMP/keystore/keystore.jks" \
