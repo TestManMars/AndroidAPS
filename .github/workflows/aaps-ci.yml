@@ -34,16 +34,6 @@ jobs:
             KEY_ALIAS=$(echo "$DECODED" | cut -d'|' -f3)
             KEY_PASSWORD=$(echo "$DECODED" | cut -d'|' -f4)
 
-            echo "::add-mask::$KEYSTORE_BASE64"
-            echo "::add-mask::$KEYSTORE_PASSWORD"
-            echo "::add-mask::$KEY_ALIAS"
-            echo "::add-mask::$KEY_PASSWORD"
-
-            echo "KEYSTORE_BASE64=$KEYSTORE_BASE64" >> $GITHUB_ENV
-            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> $GITHUB_ENV
-            echo "KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
-
             echo "✅ Keystore parameters extracted from KEYSTORE_SET"
           else
             echo "ℹ️ KEYSTORE_SET not provided, using separate secrets."
@@ -95,6 +85,11 @@ jobs:
           echo "🔐 Validating keystore, alias and password"
 
           KEYTOOL_LOG=$(mktemp)
+
+            echo "::add-mask::$KEYSTORE_BASE64"
+            echo "::add-mask::$KEYSTORE_PASSWORD"
+            echo "::add-mask::$KEY_ALIAS"
+            echo "::add-mask::$KEY_PASSWORD"
 
           if ! keytool -list \
             -alias "$KEY_ALIAS" \
