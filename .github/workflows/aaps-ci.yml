@@ -95,7 +95,7 @@ jobs:
 #          echo "::add-mask::$KEY_PASSWORD"
 
           echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
-          echo "KEY_ALIAS=KEY_ALIAS"
+          echo "KEY_ALIAS=$KEY_ALIAS"
           echo "KEY_PASSWORD=$KEY_PASSWORD"
           
           # Attempt to validate using jarsigner
