@@ -39,6 +39,11 @@ jobs:
             echo "KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
             echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
 
+            echo "::add-mask::$KEYSTORE_BASE64"
+            echo "::add-mask::$KEYSTORE_PASSWORD"
+            echo "::add-mask::$KEY_ALIAS"
+            echo "::add-mask::$KEY_PASSWORD"
+
             echo "✅ Keystore parameters extracted from KEYSTORE_SET"
           else
             echo "ℹ️ KEYSTORE_SET not provided, using separate secrets."
@@ -90,10 +95,6 @@ jobs:
           echo "test" > dummy.txt
           zip -q dummy.jar dummy.txt
           rm dummy.txt
-          
-          echo "::add-mask::$KEYSTORE_PASSWORD"
-          echo "::add-mask::$KEY_ALIAS"
-          echo "::add-mask::$KEY_PASSWORD"
           
           # Attempt to validate using jarsigner
           JARSIGNER_LOG=$(mktemp)
