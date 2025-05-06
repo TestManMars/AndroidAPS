@@ -49,25 +49,37 @@ jobs:
           else
             echo "ℹ️ KEYSTORE_SET not provided, using separate secrets."
             
-            # Set individual secrets
+            # Set individual secrets with error checking
             if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-              echo "KEYSTORE_BASE64=${{ secrets.KEYSTORE_BASE64 }}" >> $GITHUB_ENV
+              echo "KEYSTORE_BASE64=${{ secrets.KEYSTORE_BASE64 }}" >> "$GITHUB_ENV"
               echo "::add-mask::${{ secrets.KEYSTORE_BASE64 }}"
+            else
+              echo "::error::KEYSTORE_BASE64 secret is required"
+              exit 1
             fi
             
             if [ -n "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
-              echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+              echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
               echo "::add-mask::${{ secrets.KEYSTORE_PASSWORD }}"
+            else
+              echo "::error::KEYSTORE_PASSWORD secret is required"
+              exit 1
             fi
             
             if [ -n "${{ secrets.KEY_ALIAS }}" ]; then
-              echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+              echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> "$GITHUB_ENV"
               echo "::add-mask::${{ secrets.KEY_ALIAS }}"
+            else
+              echo "::error::KEY_ALIAS secret is required"
+              exit 1
             fi
             
             if [ -n "${{ secrets.KEY_PASSWORD }}" ]; then
-              echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+              echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> "$GITHUB_ENV"
               echo "::add-mask::${{ secrets.KEY_PASSWORD }}"
+            else
+              echo "::error::KEY_PASSWORD secret is required"
+              exit 1
             fi
           fi
 
